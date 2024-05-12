@@ -61,23 +61,33 @@ module.exports = {
 		let stat = options.getString('stat')!;
 		let value = options.getInteger('value')!;
 
-		let character = await database.getCurrentCharacter(id);
 		let operationText = "";
+		let character;
 
-		if (options.getSubcommand() === "set") {
-			character[stat] = value;
+		// user has a selected character
+		if ((character = await database.getCurrentCharacter(id))) {
+			// setting a value
+			if (options.getSubcommand() === "set") {
+				character[stat] = value;
+			}
+			// decreasing a value
+			else if (options.getSubcommand() === "decrease") {
+				character[stat] -= value;
+				operationText = "Decreased";
+			}
+			// increasing a value
+			else {
+				character[stat] += value;
+				operationText = "Increased";
+			}
+	
+			database.update(id, character);
+			await interaction.reply({ content: `${operationText} ${beautifyText(stat)} ${operationText === "Set" ? "to" : "by"} ${value} for ${character.name}`, ephemeral: true });
 		}
-		else if (options.getSubcommand() === "decrease") {
-			character[stat] -= value;
-			operationText = "Decreased";
-		}
+		// user hasn't selected
 		else {
-			character[stat] += value;
-			operationText = "Increased";
+			await interaction.reply({ content: `You need to select a character`, ephemeral: true });
 		}
-
-		database.update(id, character);
-		await interaction.reply({ content: `${operationText} ${beautifyText(stat)} ${operationText === "Set" ? "to" : "by"} ${value} for ${character.name}`, ephemeral: true });
 	},
 };
 

@@ -1,6 +1,8 @@
 import { CacheType, CommandInteraction, CommandInteractionOptionResolver, SlashCommandBuilder, SlashCommandStringOption } from "discord.js";
 import { database } from "../../DatabaseManager";
 
+
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName("select")
@@ -16,9 +18,11 @@ module.exports = {
         // get data
         let characterName = options.getString("character-name")!;
         let id = interaction.user.id;
+        let character, player;
 
         // try changing the character
-        if (await database.changeCurrentCharacter(id, characterName)) {
+        if ((character = await database.getCharacter(id, characterName)) && (player = await database.getPlayer(id))) {
+            
             await interaction.reply( {
                 content: `You selected ${characterName}`,
                 ephemeral: true

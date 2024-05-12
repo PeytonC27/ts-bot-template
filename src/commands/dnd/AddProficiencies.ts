@@ -47,22 +47,25 @@ module.exports = {
         const options = interaction.options as CommandInteractionOptionResolver<CacheType>;
         let id = interaction.user.id
 
-        let character = await database.getCurrentCharacter(id);
-
-		// get add all proficiencies
-		let profs_added = []
-		for (let i = 1; i <= 10; i++) {
-			const proficiency = options.getString(`proficiency${i}`);
-			if (proficiency) {
-				profs_added.push(proficiency);
-                character.proficiencies.push(proficiency);
+		let character;
+        if (character = await database.getCurrentCharacter(id)) {
+			// get add all proficiencies
+			let profs_added = []
+			for (let i = 1; i <= 10; i++) {
+				const proficiency = options.getString(`proficiency${i}`);
+				if (proficiency) {
+					profs_added.push(proficiency);
+					character.proficiencies.push(proficiency);
+				}
 			}
+	
+			profs_added = [...new Set(profs_added)];
+			await database.update(id, character);
+	
+			await interaction.reply({ content: `Proficiencies have been added to ${character.name}: ${profs_added.join(', ')}`, ephemeral: true });
 		}
-
-		profs_added = [...new Set(profs_added)];
-        character.update();
-        await database.update(id, character);
-
-		await interaction.reply({ content: `Proficiencies have been added to ${character.name}: ${profs_added.join(', ')}`, ephemeral: true });
+		else {
+			await interaction.reply({ content: `You do not have a character selected`, ephemeral: true });
+		}
 	},
 };

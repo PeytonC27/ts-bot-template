@@ -22,13 +22,22 @@ module.exports = {
 		const options = interaction.options as CommandInteractionOptionResolver<CacheType>;
         const id = interaction.user.id;
 
-		// get add all proficiencies
-        let slots: number[] = [];
-		for (let i = 1; i <= 9; i++) {
-			slots.push(options.getInteger(`spell_level_${i}`)!);
-		}
 
-        const character = await database.pushSpellcastingData(id, slots);
-		await interaction.reply({content: `Spell slots have been updated for ${character.name}`, ephemeral: true});
+		let character;
+		if ((character = await database.getCurrentCharacter(id))) {
+			// get add all proficiencies
+			let slots: number[] = [];
+			for (let i = 1; i <= 9; i++) {
+				slots.push(options.getInteger(`spell_level_${i}`)!);
+			}
+	
+			character.spell_slots = slots;
+			character.spell_slots_avail = slots;
+			database.update(id, character);
+			await interaction.reply({content: `Spell slots have been updated for ${character.name}`, ephemeral: true});
+		}
+		else {
+			await interaction.reply({content: `You need to select a character`, ephemeral: true});
+		}
 	},
 };

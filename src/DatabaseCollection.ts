@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection } from "mongodb";
+import { MongoClient, Db, Collection, UpdateResult, InsertOneResult } from "mongodb";
 const result = require('dotenv').config();
 
 /**
@@ -61,9 +61,9 @@ export default class DatabaseCollection {
      * Adds a new document to the database
      * @param data the data to add
      */
-    async insert(data: object): Promise<void> {
+    async insert(data: object): Promise<InsertOneResult<Document> | undefined> {
         try {
-            await this.collection.insertOne(data as object);
+            return await this.collection.insertOne(data as object);
         }
         catch (error) {
             console.error(`Could not insert data into ${this.databaseName}, ${this.collectionName}`);
@@ -77,12 +77,12 @@ export default class DatabaseCollection {
      * @param filter the condition for selecting documents
      * @param query the modifications to apply to the document
      */
-    async update(filter: object, query: object): Promise<void> {
+    async update(filter: object, query: object, options?: object): Promise<UpdateResult<Document> | undefined> {
         try {
-            const result = await this.collection.updateOne(filter, query);
+            return await this.collection.updateOne(filter, query, options);
         }
         catch (error) {
-            console.error(`Error updating documents in ${this.databaseName}, ${this.collectionName}:`);
+            console.error(`Error updating documents in ${this.databaseName}, ${this.collectionName}:`, error);
         }
     }
 

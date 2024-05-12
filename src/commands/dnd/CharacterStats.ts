@@ -12,9 +12,10 @@ module.exports = {
 	,
 	async execute(interaction: CommandInteraction) {
 		let id: string = interaction.user.id;
-		let character: Character | null = await database.getCurrentCharacter(id);
 
-		if (character === null) {
+
+		let character;
+		if (!(character = await database.getCurrentCharacter(id))) {
 			await interaction.reply("You need to select a character to view their stats");
 			return;
 		}
@@ -68,28 +69,28 @@ module.exports = {
 				character = await database.getCurrentCharacter(id);
 				row = new ActionRowBuilder()
 					.addComponents(spellsButton, refreshStatsButton);
-				await i.update({ embeds: [buildStatEmbed(character)], components: [row] });
+				await i.update({ embeds: [buildStatEmbed(character!)], components: [row] });
 			}
 			// on spells, press refresh
 			else if (i.customId === "refresh_spells") {
 				character = await database.getCurrentCharacter(id);
 				row = new ActionRowBuilder()
 					.addComponents(statsButton, refreshSpellsButton);
-				await i.update({ embeds: [buildSpellListEmbed(character)], components: [row] });
+				await i.update({ embeds: [buildSpellListEmbed(character!)], components: [row] });
 			}
 			// on stats, press spells
 			else if (i.customId === "spells") {
 				character = await database.getCurrentCharacter(id);
 				row = new ActionRowBuilder()
 					.addComponents(statsButton, refreshSpellsButton);
-				await i.update({ embeds: [buildSpellListEmbed(character)], components: [row] });
+				await i.update({ embeds: [buildSpellListEmbed(character!)], components: [row] });
 			}
 			// on spells, press stats
 			else if (i.customId === "stats") {
 				character = await database.getCurrentCharacter(id);
 				row = new ActionRowBuilder()
 					.addComponents(spellsButton, refreshStatsButton);
-				await i.update({ embeds: [buildStatEmbed(character)], components: [row] });
+				await i.update({ embeds: [buildStatEmbed(character!)], components: [row] });
 			}
 		});
 
@@ -99,7 +100,7 @@ module.exports = {
 	},
 };
 
-function buildSpellListEmbed(character: Character | null) {
+function buildSpellListEmbed(character: Character) {
 	let fields = [];
 	let spell_slots;
 	let spell_slots_avail;
@@ -171,7 +172,7 @@ function signed(num: number) {
 	return Math.sign(num) === -1 ? `-${Math.abs(num)}` : `+${num}`;
 }
 
-function buildStatEmbed(character: Character | null) {
+function buildStatEmbed(character: Character) {
 	if (character === null) {
 		return {
 			color: 0xE1F08B,

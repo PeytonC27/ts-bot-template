@@ -49,11 +49,42 @@ class Database {
      * @param id the id of the player
      * @returns the player object if successfully found, null otherwise
      */
-    async getPlayer(id: string): Promise<Player> {
-        const player = this.convertToPlayer(await this.#playerCollection.getOne({ id: id }));
-        if (player === null)
-            return new Player(id);
-        return player;
+    async getPlayer(id: string): Promise<Player | undefined> {
+        const player = await this.#playerCollection.getOne({ id: id });
+        return player ? this.convertToPlayer(player) : undefined;
+    }
+
+    /**
+     * Gets a spell from the spell collection
+     * @param spellName the name of the spell
+     * @returns the spell object if successfully found, null otherwise
+     */
+    async getSpell(spellName: string): Promise<Spell | undefined> {
+        const queryResult: SpellQuery = await this.#spellCollection.getOne({ "searchName": spellName.toLowerCase() }) as SpellQuery;
+        return queryResult ? this.spellFromQuery(queryResult) : undefined;
+    }
+
+    async getCharacter(id: string, characterName: string): Promise<Character | undefined> {
+        const queryResult = await this.#characterCollection.getOne({ "id": id, "name": characterName });
+        return queryResult ? this.convertToCharacter(queryResult) : undefined;
+    }
+
+    /**
+     * Gets the current character of the player
+     * @param id the id of the player
+     * @returns the character object if successfully found, a default chaeracter if not
+     */
+    async getCurrentCharacter(id: string): Promise<Character | undefined> {
+        let player, character;
+        if ((player = await this.getPlayer(id))) {
+            let name = player.getCurrentCharacter();
+
+            if ((character = await this.getCharacter(id, name))) {
+                return character;
+            }
+        }
+
+        return undefined;
     }
 
     /**
@@ -63,19 +94,18 @@ class Database {
      * @returns true if the character was successfully added, false otherwise
      */
     async addCharacterToPlayer(id: string, character: Character): Promise<boolean> {
-        if (!await this.playerExists(id)) {
-            console.log("making player char")
-            await this.addPlayer(id);
+        if (!await this.getCharacter(id, character.name)) {
+            const playerResult = await this.#playerCollection.update(
+                { "id": id },
+                {
+                    "$push": { "characters": { "$each": [character.name] } },
+                    "$set": { "currentCharacterName": character.name }
+                },
+                { "upsert": true }
+            );
+            await this.#characterCollection.insert(character);
+            return playerResult?.modifiedCount !== 1;
         }
-
-        if (!await this.characterExists(id, character.name)) {
-            await this.#playerCollection.update({ "id": id }, { "$push": { "characters": { "$each": [character.name] } } });
-            await this.#playerCollection.update({ "id": id }, { "$set": { "currentCharacterName": character.name } });
-            await this.#characterCollection.insert(character)
-            console.log("add to player", true);
-            return true;
-        }
-        console.log("add to player", false);
         return false;
     }
 
@@ -86,38 +116,21 @@ class Database {
      * @returns true if the spell was added, false otherwise
      */
     async addSpellToCurrentCharacter(id: string, spell: Spell): Promise<boolean> {
-        if (!await this.hasCurrentCharacter(id))
-            return false;
+        let character;
+        if ((character = await this.getCurrentCharacter(id))) {
+            if (character.hasSpell(spell.name))
+                return false;
 
-        let character = await this.getCurrentCharacter(id);
-        if (character.hasSpell(spell.name))
-            return false;
-
-        await this.#characterCollection.update(
-            { "id": id, "name": character.name }, // Filter
-            { "$push": { "spells": { "$each": [spell] } } } // Update with array push
-        );
-        return true;
+            await this.#characterCollection.update(
+                { "id": id, "name": character.name }, // Filter
+                { "$push": { "spells": { "$each": [spell] } } } // Update with array push
+            );
+            return true;
+        }
+        return false;
     }
 
-    /**
-     * Gets the current character of the player
-     * @param id the id of the player
-     * @returns the character object if successfully found, a default chaeracter if not
-     */
-    async getCurrentCharacter(id: string): Promise<Character> {
-        if (!this.playerExists(id))
-            return new Character();
 
-        let player: Player = await this.getPlayer(id);
-        let name = player.getCurrentCharacter();
-
-        if (!this.characterExists(id, name))
-            return new Character();
-
-        let character: Character = this.convertToCharacter(await this.#characterCollection.getOne({ "id": id, "name": name }));
-        return character;
-    }
 
     /**
      * Updates the player's current character
@@ -126,109 +139,16 @@ class Database {
      * @returns true if successfully updated, false otherwise
      */
     async changeCurrentCharacter(id: string, name: string): Promise<boolean> {
-        if (!await this.playerExists(id))
-            return false;
-
-        if (!await this.characterExists(id, name))
-            return false;
-
-        await this.#playerCollection.update({ "id": id }, { "$set": { "currentCharacterName": name } });
-        return true;
-    }
-
-    /**
-     * Gets a spell from the spell collection
-     * @param spellName the name of the spell
-     * @returns the spell object if successfully found, null otherwise
-     */
-    async getSpell(spellName: string): Promise<Spell | null> {
-        const queryResult: SpellQuery = await this.#spellCollection.getOne({ "searchName": spellName.toLowerCase() }) as SpellQuery;
-        if (queryResult === null)
-            return null;
-
-        return this.spellFromQuery(queryResult);
-    }
-
-    async updateCharacterField(id: string, operation: CollectionUpdateOperations, fieldName: string, value: any): Promise<Character> {
-        let collectionOp = (operation === CollectionUpdateOperations.INCREMENT) ? "$inc" : "$set";
-
-        if (!await this.hasCurrentCharacter(id))
-            return new Character();
-        let name = (await this.getCurrentCharacter(id)).name;
-        await this.#characterCollection.update({ "id": id, "name": name }, { [collectionOp]: { [fieldName]: value } });
-        return await this.getCurrentCharacter(id);
+        if (await this.getCharacter(id, name)) {
+            await this.#playerCollection.update({ "id": id }, { "$set": { "currentCharacterName": name } });
+            return true;
+        }
+        return false;
     }
 
     async update(id: string, replacement: Character) {
+        replacement.update();
         await this.#characterCollection.update({ "id": id }, { $set: replacement })
-    }
-
-    async pushNewProficiencies(id: string, proficiencies: string[]): Promise<Character> {
-        if (!await this.hasCurrentCharacter(id))
-            return new Character();
-
-        let character = await this.getCurrentCharacter(id);
-
-        // filtering out already owned proficiencies
-        let existingProficiencies = new Set(character.proficiencies); 
-        let newProficiencies = proficiencies.filter(
-            element => !existingProficiencies.has(element)
-        );
-
-        await this.#characterCollection.update({ "id": id, "name": character.name }, { "$push": { "proficiencies": { "$each": newProficiencies } } });
-        return character;
-    }
-
-    async pushSpellcastingData(id: string, slots: number[]): Promise<Character> {
-        if (!await this.hasCurrentCharacter(id))
-            return new Character;
-
-        let character = await this.getCurrentCharacter(id);
-
-        await this.#characterCollection.update({ "id": id, "name": character.name }, { "$set": { "spell_slots": slots } });
-        await this.#characterCollection.update({ "id": id, "name": character.name }, { "$set": { "spell_slots_avail": slots } });
-        return character;
-    }
-
-    /**
-     * Checks if a player exists based on their ID
-     * @param id the id to check
-     * @returns true if they are in the player collection, false otherwise
-     */
-    async playerExists(id: string): Promise<boolean> {
-        let res = await this.#playerCollection.exists({ "id": id });
-        console.log("Played Exists", res);
-        return (res) ? res : false;
-    }
-
-    /**
-     * Checks if a spell exists based on its name
-     * @param name the spell to check
-     * @returns true if it's in the spell collection, false otherwise
-     */
-    async spellExists(name: string): Promise<boolean> {
-        let res = await this.#spellCollection.exists({ "searchName": name.toLowerCase() });
-        return (res) ? res : false;
-    }
-
-    /**
-     * Checks if a character exists based on the player's id and the character's name
-     * @param id the id to check
-     * @param name the name to check
-     * @returns true if the player has a character with this name, false otherwise
-     */
-    private async characterExists(id: string, name: string): Promise<boolean> {
-        let res = await this.#characterCollection.exists({ "id": id, "name": name });
-        console.log("character exists", res);
-        return (res) ? res : false;
-    }
-
-    private async hasCurrentCharacter(id: string): Promise<boolean> {
-        if (!await this.playerExists(id))
-            return false;
-
-        let player = await this.getPlayer(id);
-        return await this.characterExists(id, player.currentCharacterName);
     }
 
     /**
@@ -236,11 +156,7 @@ class Database {
      * @param obj the object to convert
      * @returns the Player object if constructed successfully, null if the passed in object was null
      */
-    private convertToPlayer(obj: any): Player | null {
-
-        if (obj === null)
-            return null;
-
+    private convertToPlayer(obj: any): Player {
         let player: Player = new Player(obj.id, obj.characters, obj.currentCharacterName);
 
         return player;

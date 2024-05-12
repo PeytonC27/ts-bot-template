@@ -18,20 +18,21 @@ module.exports = {
 
         // get the spell name
         let userOption: string = (options.getString("spell_name") as string).toLowerCase();
-        let spell: Spell | null = await database.getSpell(userOption);
+        let spell;
 
-        // if the spell is null, move on
-        if (spell === null) {
+        // spell does exist
+        if ((spell = await database.getSpell(userOption))) {
+            await interaction.reply({ embeds: [buildEmbedWithSpell(spell)] });
+            
+        }
+
+        // spell does not exist
+        else {
             await interaction.reply({
                 content: `Could not find a spell called "${userOption}"`,
                 ephemeral: true
             });
             return;
-        }
-
-        // if the spell exists, show the data
-        else {
-            await interaction.reply({ embeds: [buildEmbedWithSpell(spell)] });
         }
     },
 };
