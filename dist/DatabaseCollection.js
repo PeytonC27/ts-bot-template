@@ -56,8 +56,7 @@ class DatabaseCollection {
      */
     async insert(data) {
         try {
-            await this.collection.insertOne(data);
-            //console.log(`Data inserted into ${this.databaseName}, ${this.collectionName}`);
+            return await this.collection.insertOne(data);
         }
         catch (error) {
             console.error(`Could not insert data into ${this.databaseName}, ${this.collectionName}`);
@@ -70,10 +69,17 @@ class DatabaseCollection {
      * @param filter the condition for selecting documents
      * @param query the modifications to apply to the document
      */
-    async update(filter, query) {
+    async update(filter, query, options) {
         try {
-            const result = await this.collection.updateOne(filter, query);
-            //console.log(`Matched ${result.matchedCount} document(s) and modified ${result.modifiedCount} document(s)`);
+            return await this.collection.updateOne(filter, query, options);
+        }
+        catch (error) {
+            console.error(`Error updating documents in ${this.databaseName}, ${this.collectionName}:`, error);
+        }
+    }
+    async exists(filter) {
+        try {
+            return await this.collection.findOne(filter) != null;
         }
         catch (error) {
             console.error(`Error updating documents in ${this.databaseName}, ${this.collectionName}:`);
@@ -88,7 +94,6 @@ class DatabaseCollection {
     async get(query) {
         try {
             const arr = await this.collection.find(query, { projection: { _id: 0 } }).toArray();
-            //console.log(arr);
             return arr;
         }
         catch (error) {
@@ -121,7 +126,6 @@ class DatabaseCollection {
     async remove(filter) {
         try {
             const result = await this.collection.deleteOne(filter);
-            //console.log(`Deleted ${result.deletedCount} document(s)`);
         }
         catch (error) {
             console.error(`Error removing documents from ${this.databaseName}, ${this.collectionName}:`);

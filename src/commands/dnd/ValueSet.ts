@@ -69,6 +69,8 @@ module.exports = {
 			// setting a value
 			if (options.getSubcommand() === "set") {
 				character[stat] = value;
+				if (stat === "health")
+					character["current_health"] = value;
 			}
 			// decreasing a value
 			else if (options.getSubcommand() === "decrease") {

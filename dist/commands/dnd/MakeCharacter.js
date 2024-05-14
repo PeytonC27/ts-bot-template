@@ -51,6 +51,7 @@ module.exports = {
     async execute(interaction) {
         // get options, make a new character, and get the user's ID
         const options = interaction.options;
+        // create character
         let character = new Character();
         let id = interaction.user.id;
         character.name = options.getString("name");
@@ -60,15 +61,22 @@ module.exports = {
         character.intelligence = options.getInteger("intelligence");
         character.wisdom = options.getInteger("wisdom");
         character.charisma = options.getInteger("charisma");
+        character.id = id;
         character.update();
-        if (!await DatabaseManager_1.database.playerExists(id))
-            await DatabaseManager_1.database.addPlayer(id);
-        await DatabaseManager_1.database.addCharacterToPlayer(id, character);
-        // interaction.client.emit("saveCharacters");
-        await interaction.reply({
-            content: `Character "${character.name}" created for ${interaction.user}`,
-            ephemeral: true
-        });
+        // add character to the player
+        if (await DatabaseManager_1.database.addCharacterToPlayer(id, character)) {
+            await interaction.reply({
+                content: `Character "${character.name}" created for ${interaction.user}`,
+                ephemeral: true
+            });
+        }
+        // character already exists 
+        else {
+            await interaction.reply({
+                content: `Character "${character.name}" already exists.`,
+                ephemeral: true
+            });
+        }
     },
 };
 // Function to download attachment

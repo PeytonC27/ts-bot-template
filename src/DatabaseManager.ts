@@ -3,6 +3,7 @@ import Character = require("./Character");
 import DatabaseCollection from "./DatabaseCollection";
 import Player = require('./Player');
 import Spell = require("./Spell");
+import { Binary } from "mongodb";
 const env = require('dotenv').config();
 
 export enum CollectionUpdateOperations {
@@ -14,6 +15,7 @@ class Database {
     #playerCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "players");
     #spellCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "spells");
     #characterCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "characters");
+    #imageCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "pfps");
 
     constructor() { }
 
@@ -24,6 +26,7 @@ class Database {
         await this.#playerCollection.connect();
         await this.#spellCollection.connect();
         await this.#characterCollection.connect();
+        await this.#imageCollection.connect();
     }
 
     /**
@@ -33,6 +36,7 @@ class Database {
         await this.#playerCollection.close();
         await this.#spellCollection.close();
         await this.#characterCollection.close();
+        await this.#characterCollection.connect();
     }
 
     /**
@@ -130,6 +134,24 @@ class Database {
         return false;
     }
 
+    async addProfilePicture(buffer: Buffer, id: string, characterName: string): Promise<boolean> {
+        let result = await this.#imageCollection.insert({ "data": buffer, "id": id, "name": characterName });
+        return (result) ? result.acknowledged : false;
+    }
+
+    async getProfilePicture(id: string): Promise<ImageData | undefined> {
+        let character;
+        if ((character = await this.getCurrentCharacter(id))) {
+            let name = character.name;
+            let image;
+            if ((image = await this.#imageCollection.getOne({ "name": name, "id": id })) != null) {
+                // console.log((image as ImageData).data);
+                return image as ImageData;
+            }
+            return undefined;
+        }
+        return undefined;
+    }
 
 
     /**
@@ -222,6 +244,12 @@ class SpellQuery {
     searchName: string = "";
     numericalLevel: number = 0;
     data: Spell | null = null;
+}
+
+class ImageData {
+    name: string = "";
+    id: string = "";
+    binary: Binary = new Binary();
 }
 
 export const database = new Database();

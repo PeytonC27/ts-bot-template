@@ -8,11 +8,12 @@ module.exports = {
         .setDescription("View the stats of your current character"),
     async execute(interaction) {
         let id = interaction.user.id;
-        let character = await DatabaseManager_1.database.getCurrentCharacter(id);
-        if (character === null) {
+        let character;
+        if (!(character = await DatabaseManager_1.database.getCurrentCharacter(id))) {
             await interaction.reply("You need to select a character to view their stats");
             return;
         }
+        // create the four buttons
         const refreshStatsButton = new ButtonBuilder()
             .setCustomId("refresh_stats")
             .setLabel("Refresh")
@@ -33,39 +34,41 @@ module.exports = {
             .addComponents(spellsButton, refreshStatsButton);
         const embed = buildStatEmbed(character);
         // initially show the player's stats, the "Spells" button, and "refresh
-        await interaction.reply({
+        const MSG = await interaction.reply({
             embeds: [embed],
             components: [row],
             fetchReply: true
         });
         // handling the button
         const filter = (i) => i.user.id === interaction.user.id;
-        const collector = interaction.channel.createMessageComponentCollector({
+        const collector = MSG.createMessageComponentCollector({
             filter
         });
         collector.on('collect', async (i) => {
             // on stats, press refresh
             if (i.customId === "refresh_stats") {
-                character.update();
+                character = await DatabaseManager_1.database.getCurrentCharacter(id);
                 row = new ActionRowBuilder()
                     .addComponents(spellsButton, refreshStatsButton);
                 await i.update({ embeds: [buildStatEmbed(character)], components: [row] });
             }
             // on spells, press refresh
             else if (i.customId === "refresh_spells") {
-                character.update();
+                character = await DatabaseManager_1.database.getCurrentCharacter(id);
                 row = new ActionRowBuilder()
                     .addComponents(statsButton, refreshSpellsButton);
                 await i.update({ embeds: [buildSpellListEmbed(character)], components: [row] });
             }
             // on stats, press spells
             else if (i.customId === "spells") {
+                character = await DatabaseManager_1.database.getCurrentCharacter(id);
                 row = new ActionRowBuilder()
                     .addComponents(statsButton, refreshSpellsButton);
                 await i.update({ embeds: [buildSpellListEmbed(character)], components: [row] });
             }
             // on spells, press stats
             else if (i.customId === "stats") {
+                character = await DatabaseManager_1.database.getCurrentCharacter(id);
                 row = new ActionRowBuilder()
                     .addComponents(spellsButton, refreshStatsButton);
                 await i.update({ embeds: [buildStatEmbed(character)], components: [row] });
@@ -81,6 +84,12 @@ function buildSpellListEmbed(character) {
     let spell_slots;
     let spell_slots_avail;
     let name_list;
+    if (character === null) {
+        return {
+            color: 0xE1F08B,
+            title: `NULL CHARACTER`,
+        };
+    }
     // find the right spacing per table
     let line_spacing = 6;
     for (let i = 1; i <= 9; i++) {
@@ -108,6 +117,8 @@ function buildSpellListEmbed(character) {
     };
 }
 function buildTable(character, values, names, showProf) {
+    if (character === null)
+        return "";
     if (values.length !== names.length)
         return "";
     let retVal = "";
@@ -124,6 +135,12 @@ function signed(num) {
     return Math.sign(num) === -1 ? `-${Math.abs(num)}` : `+${num}`;
 }
 function buildStatEmbed(character) {
+    if (character === null) {
+        return {
+            color: 0xE1F08B,
+            title: `NULL CHARACTER`,
+        };
+    }
     const primary = buildTable(character, [`${character.current_health} / ${character.health}`, character.armor_class.toString(), signed(character.proficiency_bonus), character.speed.toString(), character.level.toString(), signed(character.initiative_bonus)], ["HP", "AC", "PROF", "SPD", "LVL", "INIT"], false);
     const mainStats = buildTable(character, [
         `${character.strength} (${signed(character.STR)})`,

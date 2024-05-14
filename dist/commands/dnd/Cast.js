@@ -4,27 +4,22 @@ const discord_js_1 = require("discord.js");
 const DatabaseManager_1 = require("../../DatabaseManager");
 module.exports = {
     data: new discord_js_1.SlashCommandBuilder()
-        .setName("find-spell")
-        .setDescription("Adds an existing spell in the cache")
-        .addStringOption((option) => option.setName("spell_name")
-        .setDescription("The spell you want to add")
+        .setName("cast")
+        .setDescription("Cast a spell")
+        .addStringOption((option) => option.setName("spell-name")
+        .setDescription("The name of the spell to cast")
         .setRequired(true)),
     async execute(interaction) {
         const options = interaction.options;
-        // get the spell name
-        let userOption = options.getString("spell_name").toLowerCase();
-        let spell;
-        // spell does exist
-        if ((spell = await DatabaseManager_1.database.getSpell(userOption))) {
-            await interaction.reply({ embeds: [buildEmbedWithSpell(spell)] });
+        let spellName = options.getString("spell-name");
+        let id = interaction.user.id;
+        let character, spell;
+        if ((character = await DatabaseManager_1.database.getCurrentCharacter(id)) && (spell = character.tryCastSpell(spellName))) {
+            await DatabaseManager_1.database.update(id, character);
+            await interaction.reply({ embeds: [buildEmbedWithSpell(spell)], ephemeral: true });
         }
-        // spell does not exist
         else {
-            await interaction.reply({
-                content: `Could not find a spell called "${userOption}"`,
-                ephemeral: true
-            });
-            return;
+            await interaction.reply({ content: "Spellcasting failed", ephemeral: true });
         }
     },
 };

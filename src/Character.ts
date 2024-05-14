@@ -283,6 +283,15 @@ class Character {
 			return true;
 		}
 	}
+
+	tryCastSpell(name: string) {
+		let spell;
+		if ((spell = this.getSpellByName(name.toLowerCase())) && this.spell_slots_avail[spell.numericalLevel-1] > 0) {
+			this.spell_slots_avail[spell.numericalLevel-1]--;
+			return spell;
+		}
+		return undefined;
+	}
 }
 
 export = Character;

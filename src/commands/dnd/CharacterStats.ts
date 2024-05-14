@@ -1,8 +1,12 @@
-import { CommandInteraction, Interaction } from 'discord.js';
+import { AttachmentBuilder, CommandInteraction, Embed, EmbedBuilder, Interaction } from 'discord.js';
 import { database } from "../../DatabaseManager";
 import Character = require("../../Character");
+import path = require('path');
+import fs = require("fs");
+import { Buffer } from "buffer"
+import { Binary } from 'mongodb';
 
-const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js')
+const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js')
 
 
 module.exports = {
@@ -19,7 +23,6 @@ module.exports = {
 			await interaction.reply("You need to select a character to view their stats");
 			return;
 		}
-
 
 		// create the four buttons
 		const refreshStatsButton = new ButtonBuilder()
@@ -46,7 +49,8 @@ module.exports = {
 			.addComponents(spellsButton, refreshStatsButton)
 
 
-		const embed = buildStatEmbed(character);
+		const pfpURL = interaction.user.avatarURL();
+		const embed = buildStatEmbed(character, pfpURL);
 
 		// initially show the player's stats, the "Spells" button, and "refresh
 		const MSG = await interaction.reply({
@@ -64,34 +68,65 @@ module.exports = {
 
 		collector.on('collect', async (i) => {
 
-			// on stats, press refresh
+			character = await database.getCurrentCharacter(id);
+			let embed: EmbedBuilder, components;
+
+			// pressing refresh on stats page
 			if (i.customId === "refresh_stats") {
-				character = await database.getCurrentCharacter(id);
-				row = new ActionRowBuilder()
+				embed = buildStatEmbed(character!, pfpURL);
+				components = new ActionRowBuilder()
 					.addComponents(spellsButton, refreshStatsButton);
-				await i.update({ embeds: [buildStatEmbed(character!)], components: [row] });
 			}
-			// on spells, press refresh
-			else if (i.customId === "refresh_spells") {
-				character = await database.getCurrentCharacter(id);
-				row = new ActionRowBuilder()
-					.addComponents(statsButton, refreshSpellsButton);
-				await i.update({ embeds: [buildSpellListEmbed(character!)], components: [row] });
-			}
-			// on stats, press spells
-			else if (i.customId === "spells") {
-				character = await database.getCurrentCharacter(id);
-				row = new ActionRowBuilder()
-					.addComponents(statsButton, refreshSpellsButton);
-				await i.update({ embeds: [buildSpellListEmbed(character!)], components: [row] });
-			}
-			// on spells, press stats
+			// pressing stats on spells page
 			else if (i.customId === "stats") {
-				character = await database.getCurrentCharacter(id);
-				row = new ActionRowBuilder()
+				embed = buildStatEmbed(character!, pfpURL);
+				components = new ActionRowBuilder()
 					.addComponents(spellsButton, refreshStatsButton);
-				await i.update({ embeds: [buildStatEmbed(character!)], components: [row] });
 			}
+			// pressing refresh on spells page
+			else if (i.customId === "refresh_spells") {
+				embed = buildSpellListEmbed(character!, pfpURL);
+				components = new ActionRowBuilder()
+					.addComponents(statsButton, refreshSpellsButton);
+			}
+			// pressing spells on stats page
+			else {
+				embed = buildSpellListEmbed(character!, pfpURL);
+				components = new ActionRowBuilder()
+					.addComponents(statsButton, refreshSpellsButton);
+			}
+
+			await i.update({ embeds: [embed], components: [components] });
+
+			// // on stats, press refresh
+			// if (i.customId === "refresh_stats") {
+			// 	embed = 
+			// 	character = await database.getCurrentCharacter(id);
+			// 	row = new ActionRowBuilder()
+			// 		.addComponents(spellsButton, refreshStatsButton);
+			// 	await i.update({ embeds: [buildStatEmbed(character!, pfpURL)], components: [row], files: [pfp] });
+			// }
+			// // on spells, press refresh
+			// else if (i.customId === "refresh_spells") {
+			// 	character = await database.getCurrentCharacter(id);
+			// 	row = new ActionRowBuilder()
+			// 		.addComponents(statsButton, refreshSpellsButton);
+			// 	await i.update({ embeds: [buildSpellListEmbed(character!, pfpURL)], components: [row] });
+			// }
+			// // on stats, press spells
+			// else if (i.customId === "spells") {
+			// 	character = await database.getCurrentCharacter(id);
+			// 	row = new ActionRowBuilder()
+			// 		.addComponents(statsButton, refreshSpellsButton);
+			// 	await i.update({ embeds: [buildSpellListEmbed(character!, pfpURL)], components: [row] });
+			// }
+			// // on spells, press stats
+			// else if (i.customId === "stats") {
+			// 	character = await database.getCurrentCharacter(id);
+			// 	row = new ActionRowBuilder()
+			// 		.addComponents(spellsButton, refreshStatsButton);
+			// 	await i.update({ embeds: [buildStatEmbed(character!, pfpURL)], components: [row] });
+			// }
 		});
 
 		collector.on('end', collected => {
@@ -100,17 +135,42 @@ module.exports = {
 	},
 };
 
-function buildSpellListEmbed(character: Character) {
+async function findCharacterPFP(id: string): Promise<AttachmentBuilder | null> {
+	let imageObject;
+
+	if ((imageObject = await database.getProfilePicture(id))) {
+		
+		const buffer = Buffer.from(imageObject.binary.buffer);
+
+		try {
+			// Create an AttachmentBuilder using the imageData buffer
+			//const attachment = new AttachmentBuilder(imageData, { name: "character-pfp.jpg" });
+			const attachment = new AttachmentBuilder(buffer, { name: "image-attachment.png" });
+			const filePath = path.join(__dirname, 'test-image.jpg');
+			await fs.promises.writeFile(filePath, buffer);
+			console.log('Image saved successfully!');
+
+			// Return the URL for the embed image using AttachmentBuilder
+			return attachment;
+		} catch (error) {
+			console.error('Error creating attachment:', error);
+			return null;
+		}
+	}
+
+	return null;
+}
+
+function buildSpellListEmbed(character: Character, url: string | null): EmbedBuilder {
 	let fields = [];
 	let spell_slots;
 	let spell_slots_avail;
 	let name_list;
 
 	if (character === null) {
-		return {
-			color: 0xE1F08B,
-			title: `NULL CHARACTER`,
-		}
+		return new EmbedBuilder()
+			.setColor(0xe1f08b)
+			.setTitle("NULL CHARACTER");
 	}
 
 	// find the right spacing per table
@@ -139,11 +199,11 @@ function buildSpellListEmbed(character: Character) {
 		fields.push({ name: `__Level ${i} Spells__`, value: name_list, inline: true });
 	}
 
-	return {
-		color: 0xE1F08B,
-		title: `${character.name}'s Spells`,
-		fields: fields
-	};
+	return new EmbedBuilder()
+		.setColor(0xE1F08B)
+		.setTitle(`${character.name}'s Spells`)
+		.setFields(fields)
+		.setThumbnail(url);
 }
 
 function buildTable(character: Character, values: string[], names: string[], showProf: boolean) {
@@ -172,11 +232,12 @@ function signed(num: number) {
 	return Math.sign(num) === -1 ? `-${Math.abs(num)}` : `+${num}`;
 }
 
-function buildStatEmbed(character: Character) {
+function buildStatEmbed(character: Character, url: string | null): EmbedBuilder {
 	if (character === null) {
-		return {
-			color: 0xE1F08B,
-			title: `NULL CHARACTER`,
+		if (character === null) {
+			return new EmbedBuilder()
+				.setColor(0xe1f08b)
+				.setTitle("NULL CHARACTER");
 		}
 	}
 
@@ -243,7 +304,6 @@ function buildStatEmbed(character: Character) {
 		["Gold", "Siver", "Copper"],
 		false
 	);
-
 	const spellStuff = buildTable(
 		character,
 		[character.spell_save.toString(), character.spell_attack_modifier.toString(), character.spellcasting_modifier],
@@ -268,5 +328,6 @@ function buildStatEmbed(character: Character) {
 			{ name: "__Ability Checks__", value: checks, inline: true }
 
 			//			{name: "\u200B", value: "\u200B", inline: true},
-		);
+		)
+		.setThumbnail(url);
 }

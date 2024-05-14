@@ -13,22 +13,6 @@ class Player {
         this.currentCharacterName = (currentCharactersName) ? currentCharactersName : "";
     }
     /**
-     * Adds a new character to a player
-     * @param {Character} character
-     */
-    addCharacter(character) {
-        this.characters.push(character);
-    }
-    removeCharacter(name) {
-        if (this.characters.find(c => c.name === name)) {
-            this.characters = this.characters.filter(c => c.name !== name);
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-    /**
      * @returns get the player's id
      */
     getId() {
@@ -40,6 +24,10 @@ class Player {
     getCurrentCharacter() {
         return this.findCurrentCharacter();
     }
+    /**
+     * Returns the list of all characters this player has
+     * @returns
+     */
     getCharacterList() {
         return this.characters;
     }
@@ -50,20 +38,24 @@ class Player {
      */
     changeCharacterByName(name) {
         for (let i = 0; i < this.characters.length; i++) {
-            if (name == this.characters[i].name) {
-                this.currentCharacterName = this.characters[i].name;
+            if (name == this.characters[i]) {
+                this.currentCharacterName = this.characters[i];
                 return true;
             }
         }
         return false;
     }
+    /**
+     * Tries to find the current character, returning them if they exist
+     * @returns
+     */
     findCurrentCharacter() {
         for (let character of this.characters) {
-            if (character.name === this.currentCharacterName) {
+            if (character === this.currentCharacterName) {
                 return character;
             }
         }
-        return null;
+        return "";
     }
 }
 module.exports = Player;

@@ -11,24 +11,20 @@ module.exports = {
         .setRequired(true)),
     async execute(interaction) {
         const options = interaction.options;
+        // find the spell
         let userOption = options.getString("spell_name").toLowerCase();
         let id = interaction.user.id;
-        if (!await DatabaseManager_1.database.spellExists(userOption)) {
+        let spell;
+        // if the user's input doesn't map to an existing spell
+        if (!(spell = await DatabaseManager_1.database.getSpell(userOption))) {
             await interaction.reply({ content: `Could not find spell: ${userOption}. Make sure your spelling is correct (capitalization does not matter).`, ephemeral: true });
             return;
         }
-        if (!await DatabaseManager_1.database.playerExists(id)) {
-            await interaction.reply({ content: `You need to make a character before you can give yourself spells!`, ephemeral: true });
-            return;
-        }
-        let spell = await DatabaseManager_1.database.getSpell(userOption);
-        if (await DatabaseManager_1.database.getCurrentCharacter(id) === null) {
-            await interaction.reply({ content: `You do not have a character selected, please select one`, ephemeral: true });
-            return;
-        }
-        if ((await DatabaseManager_1.database.addSpellToPlayer(id, spell))) {
+        // try adding the spell to the character
+        if ((await DatabaseManager_1.database.addSpellToCurrentCharacter(id, spell))) {
             await interaction.reply({ content: `Successfull added spell: ${spell.name}!`, ephemeral: true });
         }
+        // user tried to add a spell they already have
         else {
             await interaction.reply({ content: `You already have spell "${spell.name} equipped`, ephemeral: true });
             return;

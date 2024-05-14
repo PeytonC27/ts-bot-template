@@ -1,5 +1,6 @@
 "use strict";
 class Character {
+    id = "";
     // main stats
     name = "Unnamed Character";
     health = 0;
@@ -207,12 +208,27 @@ class Character {
         this.spell_slots[level - 1] = num;
         this.spell_slots_avail[level - 1] = num;
     }
+    /**
+     * Returns a spell with a specific name if it can be found
+     * @param name
+     * @returns
+     */
     getSpellByName(name) {
         return this.spells.find(spell => spell.name.toLowerCase() === name.toLowerCase());
     }
+    /**
+     * Returns all spells with a certain level
+     * @param level
+     * @returns
+     */
     getSpellsOfLevel(level) {
         return this.spells.filter(spell => spell.numericalLevel === level);
     }
+    /**
+     * Checks if the user has a spell with a specific name
+     * @param name
+     * @returns
+     */
     hasSpell(name) {
         return this.spells.find(spell => spell.name === name) !== undefined;
     }
@@ -230,6 +246,14 @@ class Character {
             this.spells.push(spell);
             return true;
         }
+    }
+    tryCastSpell(name) {
+        let spell;
+        if ((spell = this.getSpellByName(name.toLowerCase())) && this.spell_slots_avail[spell.numericalLevel - 1] > 0) {
+            this.spell_slots_avail[spell.numericalLevel - 1]--;
+            return spell;
+        }
+        return undefined;
     }
 }
 module.exports = Character;

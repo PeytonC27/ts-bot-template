@@ -22,7 +22,10 @@ module.exports = {
 
         // spell does exist
         if ((spell = await database.getSpell(userOption))) {
-            await interaction.reply({ embeds: [buildEmbedWithSpell(spell)] });
+            await interaction.reply({ 
+                embeds: [buildEmbedWithSpell(spell)],
+                ephemeral: true
+            });
             
         }
 
