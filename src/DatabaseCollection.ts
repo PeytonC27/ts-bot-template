@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, UpdateResult, InsertOneResult } from "mongodb";
+import { MongoClient, Db, Collection, UpdateResult, InsertOneResult, DeleteResult } from "mongodb";
 const result = require('dotenv').config();
 
 /**
@@ -135,9 +135,9 @@ export default class DatabaseCollection {
      * @param collectionName the collection to use
      * @param filter the condtion for selecting documents
      */
-    async remove(filter: object): Promise<void> {
+    async remove(filter: object): Promise<DeleteResult | undefined> {
         try {
-            const result = await this.collection.deleteOne(filter);
+            return await this.collection.deleteOne(filter);
         }
         catch (error) {
             console.error(`Error removing documents from ${this.databaseName}, ${this.collectionName}:`);

@@ -23,6 +23,8 @@ module.exports = {
         // try changing the character
         if ((character = await database.getCharacter(id, characterName)) && (player = await database.getPlayer(id))) {
             
+            database.changeCurrentCharacter(id, character.name);
+
             await interaction.reply( {
                 content: `You selected ${characterName}`,
                 ephemeral: true

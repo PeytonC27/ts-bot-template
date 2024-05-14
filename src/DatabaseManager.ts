@@ -15,7 +15,6 @@ class Database {
     #playerCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "players");
     #spellCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "spells");
     #characterCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "characters");
-    #imageCollection: DatabaseCollection = new DatabaseCollection(env.parsed["MONGO_TOKEN"], "dnd-storage", "pfps");
 
     constructor() { }
 
@@ -26,7 +25,6 @@ class Database {
         await this.#playerCollection.connect();
         await this.#spellCollection.connect();
         await this.#characterCollection.connect();
-        await this.#imageCollection.connect();
     }
 
     /**
@@ -36,7 +34,6 @@ class Database {
         await this.#playerCollection.close();
         await this.#spellCollection.close();
         await this.#characterCollection.close();
-        await this.#characterCollection.connect();
     }
 
     /**
@@ -108,9 +105,14 @@ class Database {
                 { "upsert": true }
             );
             await this.#characterCollection.insert(character);
-            return playerResult?.modifiedCount !== 1;
+            return playerResult?.modifiedCount === 1;
         }
         return false;
+    }
+
+    async removeCharacter(id: string, characterName: string) {
+        let res = await this.#characterCollection.remove({ "id": id, "name": characterName });
+        return res?.acknowledged;
     }
 
     /**
@@ -134,24 +136,24 @@ class Database {
         return false;
     }
 
-    async addProfilePicture(buffer: Buffer, id: string, characterName: string): Promise<boolean> {
-        let result = await this.#imageCollection.insert({ "data": buffer, "id": id, "name": characterName });
-        return (result) ? result.acknowledged : false;
-    }
+    // async addProfilePicture(buffer: Buffer, id: string, characterName: string): Promise<boolean> {
+    //     let result = await this.#imageCollection.insert({ "data": buffer, "id": id, "name": characterName });
+    //     return (result) ? result.acknowledged : false;
+    // }
 
-    async getProfilePicture(id: string): Promise<ImageData | undefined> {
-        let character;
-        if ((character = await this.getCurrentCharacter(id))) {
-            let name = character.name;
-            let image;
-            if ((image = await this.#imageCollection.getOne({ "name": name, "id": id })) != null) {
-                // console.log((image as ImageData).data);
-                return image as ImageData;
-            }
-            return undefined;
-        }
-        return undefined;
-    }
+    // async getProfilePicture(id: string): Promise<ImageData | undefined> {
+    //     let character;
+    //     if ((character = await this.getCurrentCharacter(id))) {
+    //         let name = character.name;
+    //         let image;
+    //         if ((image = await this.#imageCollection.getOne({ "name": name, "id": id })) != null) {
+    //             // console.log((image as ImageData).data);
+    //             return image as ImageData;
+    //         }
+    //         return undefined;
+    //     }
+    //     return undefined;
+    // }
 
 
     /**
@@ -161,7 +163,7 @@ class Database {
      * @returns true if successfully updated, false otherwise
      */
     async changeCurrentCharacter(id: string, name: string): Promise<boolean> {
-        if (await this.getCharacter(id, name)) {
+        if (await this.getCharacter(id, name) || name === "") {
             await this.#playerCollection.update({ "id": id }, { "$set": { "currentCharacterName": name } });
             return true;
         }
@@ -170,7 +172,11 @@ class Database {
 
     async update(id: string, replacement: Character) {
         replacement.update();
-        await this.#characterCollection.update({ "id": id }, { $set: replacement })
+        await this.#characterCollection.update({ "id": id, "name": replacement.name }, { $set: replacement })
+    }
+
+    async updatePlayer(replacement: Player) {
+        await this.#playerCollection.update({"id": replacement.id }, { $set: replacement });
     }
 
     /**
