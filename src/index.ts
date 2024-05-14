@@ -1,11 +1,9 @@
 import { Client, GatewayIntentBits, Events, Collection, Interaction } from "discord.js";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";
-import { database } from './DatabaseManager';
 
 import fs = require("fs");
 import path = require("path");
-import Player from "./Player";
 const env = require('dotenv').config();
 
 // custom MyClient client

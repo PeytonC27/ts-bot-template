@@ -1,5 +1,4 @@
 import { MongoClient, Db, Collection, UpdateResult, InsertOneResult, DeleteResult } from "mongodb";
-const result = require('dotenv').config();
 
 /**
  * A database collection class designed to make insertion, deletion, updating, and getting operations easier
