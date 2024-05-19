@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const rest_1 = require("@discordjs/rest");
 const v10_1 = require("discord-api-types/v10");
-const DatabaseManager_1 = require("./DatabaseManager");
 const fs = require("fs");
 const path = require("path");
 const env = require('dotenv').config();
@@ -60,7 +59,6 @@ for (const folder of commandFolders) {
         //console.log(`Started refreshing ${client.commands.size} application (/) commands.`);
         // reloading commands
         const data = await rest.put(v10_1.Routes.applicationGuildCommands(clientID, guildID), { body: commands });
-        await DatabaseManager_1.database.connect();
         console.log(`Successfully reloaded ${data.length} application (/) commands.`);
     }
     catch (error) {
@@ -77,12 +75,12 @@ client.once('ready', () => {
 // ========================================================= //
 // ==================== BOT LOGGING OFF ==================== //
 // ========================================================= //
-client.on("close", async () => {
-    await DatabaseManager_1.database.close();
-});
-process.on('SIGINT', () => {
-    DatabaseManager_1.database.close().then(() => process.exit(0));
-});
+// client.on("close", async () => {
+//     await database.close();
+// });
+// process.on('SIGINT', () => {
+//     database.close().then(() => process.exit(0));
+// });
 // ========================================================= //
 // ==================== ON MESSAGE SEND ==================== //
 // ========================================================= //

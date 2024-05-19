@@ -1,5 +1,4 @@
 import { CacheType, CommandInteraction, CommandInteractionOptionResolver, SlashCommandBuilder, SlashCommandStringOption } from "discord.js";
-import { database } from "../../DatabaseManager";
 
 module.exports = {
 	data: new SlashCommandBuilder()

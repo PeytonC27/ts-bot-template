@@ -73,8 +73,6 @@ for (const folder of commandFolders) {
             { body: commands },
         );
 
-        await database.connect();
-
         console.log(`Successfully reloaded ${data.length} application (/) commands.`);
 
     } catch (error) {
@@ -94,13 +92,13 @@ client.once('ready', () => {
 // ========================================================= //
 // ==================== BOT LOGGING OFF ==================== //
 // ========================================================= //
-client.on("close", async () => {
-    await database.close();
-});
+// client.on("close", async () => {
+//     await database.close();
+// });
 
-process.on('SIGINT', () => {
-    database.close().then(() => process.exit(0));
-});
+// process.on('SIGINT', () => {
+//     database.close().then(() => process.exit(0));
+// });
 
 // ========================================================= //
 // ==================== ON MESSAGE SEND ==================== //

@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongodb_1 = require("mongodb");
-const result = require('dotenv').config();
 /**
  * A database collection class designed to make insertion, deletion, updating, and getting operations easier
  * with a wrapper class. This class can be used alone, but it's advised to make another wrapper around this class
@@ -125,7 +124,7 @@ class DatabaseCollection {
      */
     async remove(filter) {
         try {
-            const result = await this.collection.deleteOne(filter);
+            return await this.collection.deleteOne(filter);
         }
         catch (error) {
             console.error(`Error removing documents from ${this.databaseName}, ${this.collectionName}:`);
